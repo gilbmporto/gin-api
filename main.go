@@ -12,6 +12,7 @@ type Task struct {
 }
 
 func main() {
+	// Created a new Gin router
 	router := gin.Default()
 
 	router.SetTrustedProxies(nil)
