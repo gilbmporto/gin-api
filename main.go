@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -59,9 +60,32 @@ func main() {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		newTask.Id = len(tasks) + 1
+		newTask.Id = tasks[len(tasks)-1].Id + 1
 		tasks = append(tasks, *newTask)
 		ctx.JSON(http.StatusCreated, *newTask)
+	})
+
+	router.DELETE("/tasks/:id", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		// Convert the string ID to an integer
+		idInt, err := strconv.Atoi(id)
+		if err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+			return
+		}
+
+		// Find the task with the given ID and remove it
+		for index, task := range tasks {
+			if task.Id == (idInt) {
+				tasks = slices.Delete(tasks, index, index+1)
+				ctx.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
+				return
+			}
+		}
+
+		// If the task is not found, return a 404 error
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
 	})
 
 	router.Run(":3000")
