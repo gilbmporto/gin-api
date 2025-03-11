@@ -37,13 +37,7 @@ func main() {
 		// Convert the string ID to an integer
 		idInt, err := strconv.Atoi(id)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"er  ror": "Invalid ID"})
-			return
-		}
-
-		// Check if the ID is valid
-		if idInt <= 0 || idInt > len(tasks) {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 			return
 		}
 
