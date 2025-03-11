@@ -8,11 +8,46 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Task struct {
+	Id    int    `json:"id"`
+	Title string `json:"title"`
+}
+
+var tasks []Task = []Task{
+	{Id: 1, Title: "Surfar na beira mar"},
+	{Id: 2, Title: "Conseguir um emprego"},
+}
+
 func RouteTest(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Running API Test"})
 }
 
 func GetAllTasks(ctx *gin.Context) {
+	rows, err := DB.Query("SELECT id, title FROM tasks")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var tasks []Task
+	for rows.Next() {
+		var task Task
+		err := rows.Scan(&task.Id, &task.Title)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		tasks = append(tasks, task)
+	}
+
+	// If no tasks are found, return a 204 No Content status
+	if len(tasks) == 0 {
+		ctx.JSON(http.StatusNoContent, gin.H{"message": "No tasks found"})
+		return
+	}
+
+	// Return all tasks as JSON
 	ctx.JSON(http.StatusOK, tasks)
 }
 
@@ -39,14 +74,38 @@ func GetTaskById(ctx *gin.Context) {
 }
 
 func CreateTask(ctx *gin.Context) {
-	var newTask *Task
+	// Bind the JSON request body to a Task struct
+	var newTask Task
 	if err := ctx.ShouldBindJSON(&newTask); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newTask.Id = tasks[len(tasks)-1].Id + 1
-	tasks = append(tasks, *newTask)
-	ctx.JSON(http.StatusCreated, *newTask)
+
+	// Insert the new task into the tasks slice
+	tasks = append(tasks, newTask)
+
+	// Insert the new task into the database
+	stmt, err := DB.Prepare("INSERT INTO tasks (title) VALUES (?)")
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(newTask.Title)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	newTask.Id = int(id)
+	ctx.JSON(http.StatusCreated, newTask)
 }
 
 func UpdateTask(ctx *gin.Context) {

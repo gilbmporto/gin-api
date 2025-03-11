@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	_ "modernc.org/sqlite"
@@ -12,7 +13,7 @@ var DB *sql.DB
 func initDB(filepath string) *sql.DB {
 	db, err := sql.Open("sqlite", filepath)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Error opening database: %s\n", err.Error())
 	}
 
 	if db == nil {
