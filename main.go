@@ -17,6 +17,8 @@ var tasks []Task = []Task{
 func main() {
 	// Created a new Gin router
 	router := gin.Default()
+	DB := initDB("tasks.db")
+	defer DB.Close()
 
 	router.SetTrustedProxies(nil)
 
