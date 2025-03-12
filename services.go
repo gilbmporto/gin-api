@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"slices"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -54,23 +53,16 @@ func GetAllTasks(ctx *gin.Context) {
 func GetTaskById(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	// Convert the string ID to an integer
-	idInt, err := strconv.Atoi(id)
+	var task Task
+	row := DB.QueryRow("SELECT id, title FROM tasks WHERE id = ?", id)
+
+	err := row.Scan(&task.Id, &task.Title)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Find the task with the given ID and return it
-	for _, task := range tasks {
-		if task.Id == (idInt) {
-			ctx.JSON(http.StatusOK, task)
-			return
-		}
-	}
-
-	// If the task is not found, return a 404 error
-	ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+	ctx.JSON(http.StatusOK, task)
 }
 
 func CreateTask(ctx *gin.Context) {
@@ -140,22 +132,11 @@ func UpdateTask(ctx *gin.Context) {
 func DeleteTask(ctx *gin.Context) {
 	id := ctx.Param("id")
 
-	// Convert the string ID to an integer
-	idInt, err := strconv.Atoi(id)
+	_, err := DB.Exec("DELETE FROM tasks WHERE id = ?", id)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Find the task with the given ID and remove it
-	for index, task := range tasks {
-		if task.Id == (idInt) {
-			tasks = slices.Delete(tasks, index, index+1)
-			ctx.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
-			return
-		}
-	}
-
-	// If the task is not found, return a 404 error
-	ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Task deleted successfully"})
 }
