@@ -101,32 +101,44 @@ func CreateTask(ctx *gin.Context) {
 }
 
 func UpdateTask(ctx *gin.Context) {
-	id := ctx.Param("id")
-
-	// Convert the string ID to an integer
-	idInt, err := strconv.Atoi(id)
+	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task ID"})
 		return
 	}
 
-	var updatedTask *Task
+	var updatedTask Task
 	if err := ctx.ShouldBindJSON(&updatedTask); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Find the task with the given ID and update it
-	for index, task := range tasks {
-		if task.Id == (idInt) {
-			tasks[index].Title = updatedTask.Title
-			ctx.JSON(http.StatusOK, tasks[index])
-			return
-		}
+	if updatedTask.Title == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Title is required"})
+		return
 	}
 
-	// If the task is not found, return a 404 error
-	ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+	row := DB.QueryRow("SELECT id, title FROM tasks WHERE id =?", id)
+	var task Task
+	err = row.Scan(&task.Id, &task.Title)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if task.Title == updatedTask.Title {
+		ctx.JSON(http.StatusOK, gin.H{"message": "No changes made"})
+		return
+	}
+
+	_, err = DB.Exec("UPDATE tasks SET title = ? WHERE id = ?", updatedTask.Title, id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	updatedTask.Id = id
+
+	ctx.JSON(http.StatusOK, updatedTask)
 }
 
 func DeleteTask(ctx *gin.Context) {
